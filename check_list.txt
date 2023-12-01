@@ -1,0 +1,98 @@
+
+function onOpen() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getSheetByName("Check List");
+
+  // Ocultar filas que están fuera del rango 1 a 14
+  sheet.hideRows(15, sheet.getLastRow() - 14);
+
+  var menuEntries = [
+    { name: "Limpiar respuestas", functionName: "limpiarRespuestas" }
+  ];
+  spreadsheet.addMenu("Limpiar", menuEntries);
+}
+
+function onEdit(e) {
+  var sheet = e.source.getSheetByName("Check List");
+  var range = e.range;
+  var column = range.getColumn();
+
+  // Mostrar u ocultar columnas y filas en función de las respuestas
+  if (column === 8 && range.getRow() >= 10 && range.getRow() <= 44) {
+    var answerValue = range.getValue();
+
+    if (range.getRow() === 10) {
+      if (answerValue === "SI") {
+        sheet.showRows(21, 7);
+        sheet.hideRows(15, 6);
+      } else if (answerValue === "NO") {
+        sheet.hideRows(21, 7);
+        sheet.showRows(15, 6);
+      }
+    } else if (range.getRow() === 16) {
+      if (answerValue === "SI") {
+        sheet.showRows(28, 7);
+        sheet.hideRows(42, 7);
+      } else if (answerValue === "NO") {
+        sheet.hideRows(28, 7);
+        sheet.showRows(42, 7);
+      }
+    } else if (range.getRow() === 23) {
+      if (answerValue === "SI") {
+        sheet.showRows(35, 7);
+        sheet.hideRows(28, 7);
+      } else if (answerValue === "NO") {
+        sheet.hideRows(35, 7);
+        sheet.showRows(28, 7);
+      }
+    } else if (range.getRow() === 30) {
+      if (answerValue === "SI") {
+        sheet.showRows(42, 7);
+        sheet.hideRows(49, 21);
+      } else if (answerValue === "NO") {
+        sheet.hideRows(42, 7);
+        sheet.showRows(49, 21);
+      }
+    } else if (range.getRow() === 37) {
+      if (answerValue === "SI") {
+        sheet.showRows(49, 21);
+      } else if (answerValue === "NO") {
+        sheet.showRows(49, 21);
+      }
+    } else if (range.getRow() === 44) {
+      if (answerValue === "SI") {
+        sheet.showRows(49, 21);
+      } else if (answerValue === "NO") {
+        sheet.showRows(49, 21);
+      }
+    }
+  }
+}
+
+function limpiarRespuestas() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getSheetByName("Check List");
+
+  var protectedRanges = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  var unprotectedRanges = [];
+
+  // Desproteger la hoja
+  protectedRanges.forEach(function (range) {
+    if (!range.isWarningOnly()) {
+      range.remove();
+      unprotectedRanges.push(range.getRange().getA1Notation());
+    }
+  });
+
+  // Ocultar filas y limpiar respuestas
+  sheet.hideRows(15, sheet.getLastRow() - 14);
+  var rangeList = sheet.getRangeList(["H10", "H16", "H23", "H30", "H37", "H44"]);
+  rangeList.clearContent();
+  Browser.msgBox("Se han limpiado las respuestas.");
+
+  // Volver a proteger la hoja
+  unprotectedRanges.forEach(function (rangeNotation) {
+    var range = sheet.getRange(rangeNotation);
+    sheet.protect().setRange(range).setDescription('Protegido');
+  });
+}

@@ -1,0 +1,172 @@
+// Ejecutar al abrir el archivo
+function onOpen() {
+  crearMenu();
+}
+
+// Crear menú
+function crearMenu() {
+  var menu = SpreadsheetApp.getUi().createMenu("F351 regulatorio");
+  menu.addItem("1. Limpiar", "Limpiar");
+  menu.addItem("2. Crear F351", "ejecutarFuncionesPrincipales");
+  menu.addItem("3. Crear Backup", "hacerCopia");
+  menu.addToUi();
+}
+
+function Limpiar () {  
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getSheetByName("CAM084_F351_REGULATORIO");
+  var rangeList = sheet.getRangeList(["A31:BW97", "A99:BW182","A184:BW199", "A222:BW275"]);
+  rangeList.clearContent();
+  Browser.msgBox("Se han limpiado la hoja.");
+}
+
+function concatenarCeldas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var datosVariablesSheet = ss.getSheetByName('Datos_Variables');
+  var regulatorioSheet = ss.getSheetByName('CAM084_F351_REGULATORIO');
+  
+  var valorB3 = datosVariablesSheet.getRange('B3').getValue().toString();
+  var valorB2 = datosVariablesSheet.getRange('B2').getValue().toString();
+  var valorB1 = datosVariablesSheet.getRange('B1').getValue().toString();
+  
+  var resultado = valorB3 + valorB2 + valorB1;
+  
+  regulatorioSheet.getRange('R11').setValue(resultado);
+} 
+
+// Este codigo funciona bien 
+function importDataFromDrive() {
+  var spreadsheetId = "1oetAYhljtBGCYzEDSkoJtmFQzKlLwtGcQLUfjAwMmAI";
+  var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  var datosVariablesSheet = spreadsheet.getSheetByName("Datos_Variables");
+  if (!datosVariablesSheet) {
+    throw new Error("No se encontró la hoja 'Datos_Variables'. Asegúrate de que exista en el archivo.");
+  }
+
+  var year = datosVariablesSheet.getRange("B1").getValue();
+  var mes = datosVariablesSheet.getRange("B2").getValue();
+  var dia = datosVariablesSheet.getRange("B3").getValue();
+  var archivoNombre = "CAM084_F351_Separado_" + year + mes + dia;
+  var carpetaPrincipalId = "1uqKx-B7SOFYtfUhRVtMrkKLxNHyGtjWz";
+  var carpetaAno = DriveApp.getFolderById(carpetaPrincipalId).getFoldersByName(year).next();
+  var carpetaMes = carpetaAno.getFoldersByName(mes).next();
+  var archivos = carpetaMes.getFilesByName(archivoNombre);
+  
+  if (!archivos.hasNext()) {
+    console.log("No se encontró el archivo en la carpeta del mes. Se omitirá la importación de datos.");
+    return;
+  }
+  
+  var archivo = archivos.next();
+  var archivoId = archivo.getId();
+  var pruebaSheet = spreadsheet.getSheetByName("CAM084_F351_REGULATORIO");
+  
+  if (!pruebaSheet) {
+    pruebaSheet = spreadsheet.insertSheet("CAM084_F351_REGULATORIO");
+  }
+
+  importarDatosSiExiste("participativas", archivoId, pruebaSheet, 184, 1);
+  importarDatosSiExiste("Vencimiento_Y_Deposito", archivoId, pruebaSheet, 31, 1);
+  importarDatosSiExiste("disponible", archivoId, pruebaSheet, 99, 1);
+  //importarDatosSiExiste("depositos", archivoId, pruebaSheet, 64, 1);
+  importarDatosSiExiste("reportos", archivoId, pruebaSheet, 222, 1);
+}
+
+function importarDatosSiExiste(nombreHoja, archivoId, hojaDestino, filaInicio, columnaInicio) {
+  try {
+    var archivoSpreadsheet = SpreadsheetApp.openById(archivoId);
+    var datosSheet = archivoSpreadsheet.getSheetByName(nombreHoja);
+    if (datosSheet) {
+      var datos = datosSheet.getDataRange().getValues();
+      var filaFin = filaInicio + datos.length - 1;
+      var columnaFin = columnaInicio + datos[0].length - 1;
+      hojaDestino.getRange(filaInicio, columnaInicio, datos.length, datos[0].length).setValues(datos);
+    }
+  } catch (error) {
+    console.log("Error al importar datos de la hoja '" + nombreHoja + "' en el archivo '" + archivoNombre + "'.");
+    console.log(error);
+  }
+}
+
+function hacerCopia() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var hojaOriginal = ss.getSheetByName("CAM084_F351_REGULATORIO");
+
+  if (!hojaOriginal) {
+    throw new Error("No se encontró la hoja CAM084_F351_REGULATORIO");
+  }
+
+  var datosVariablesSheet = ss.getSheetByName("Datos_Variables");
+  var year = datosVariablesSheet.getRange("B1").getValue();
+  var mes = datosVariablesSheet.getRange("B2").getValue();
+  var dia = datosVariablesSheet.getRange("B3").getValue();
+  var nombreArchivo = "CAM084_F351_" + year + mes + dia;
+  var carpetaPadreId = "1uqKx-B7SOFYtfUhRVtMrkKLxNHyGtjWz";
+  var carpetaPadre = DriveApp.getFolderById(carpetaPadreId);
+
+  if (!carpetaPadre) {
+    throw new Error("La carpeta madre no existe");
+  }
+
+  var carpetaAnio = buscarCarpeta(year, carpetaPadreId);
+  var carpetaMes = buscarCarpeta(mes, carpetaAnio.getId());
+  var archivo = DriveApp.getFileById(ss.getId());
+  var copia = archivo.makeCopy(nombreArchivo, carpetaMes);
+
+  // Obtener el nombre de la copia (incluyendo la extensión .xlsx) y renombrar la hoja copiada
+  var nombreCopia = copia.getName();
+  var copiaSpreadsheet = SpreadsheetApp.open(copia);
+  copiaSpreadsheet.getSheetByName("CAM084_F351_REGULATORIO").setName(nombreCopia);
+
+  // Eliminar las otras hojas excepto la hoja "CAM084_F351_REGULATORIO"
+  var hojas = copiaSpreadsheet.getSheets();
+  for (var i = 0; i < hojas.length; i++) {
+    var hoja = hojas[i];
+    if (hoja.getName() !== nombreCopia) {
+      copiaSpreadsheet.deleteSheet(hoja);
+    }
+  }
+
+  // Copiar valores y formato de la hoja original a la copia
+  var copiaHoja = copiaSpreadsheet.getSheetByName(nombreCopia);
+  var rangoOriginal = hojaOriginal.getDataRange();
+  var valoresOriginal = rangoOriginal.getValues();
+  var formatoOriginal = rangoOriginal.getNumberFormats();
+
+  copiaHoja.getRange(1, 1, valoresOriginal.length, valoresOriginal[0].length).setValues(valoresOriginal);
+  copiaHoja.getRange(1, 1, valoresOriginal.length, valoresOriginal[0].length).copyTo(copiaHoja.getRange(1, 1));
+
+  mostrarMensaje("¡Listo! El backup ha sido completado.");
+}
+
+function buscarCarpeta(nombreCarpeta, carpetaPadreId) {
+  var carpetaPadre = DriveApp.getFolderById(carpetaPadreId);
+  
+  if (!carpetaPadre) {
+    throw new Error("La carpeta madre no existe");
+  }
+  
+  var carpetas = carpetaPadre.getFoldersByName(nombreCarpeta);
+  
+  if (carpetas.hasNext()) {
+    return carpetas.next();
+  } else {
+    throw new Error("La carpeta " + nombreCarpeta + " no se encuentra en la carpeta padre " + carpetaPadre.getName());
+  }
+}
+
+function ejecutarFuncionesPrincipales() {
+  try {
+    concatenarCeldas();
+    Utilities.sleep(1000); // Pausa de 1 segundo
+    importDataFromDrive();
+    mostrarMensaje("Creación de F351 completada con éxito");
+  } catch (error) {
+    mostrarMensaje("¡Oh no!, ha ocurrido un error en el proceso: " + error.message);
+  }
+}
+
+function mostrarMensaje(mensaje) {
+  var ui = SpreadsheetApp.getUi();
+  ui.alert(mensaje);
+} 

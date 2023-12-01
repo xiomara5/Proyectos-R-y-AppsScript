@@ -1,0 +1,92 @@
+ function copiarDocumentos() {
+  var sheets = [
+    "HND_T", "HND_T_1", "HND_T_2", "HND_T_12", "HND_T_13",
+    "CRI_T", "CRI_T_1", "CRI_T_2", "CRI_T_12", "CRI_T_13",
+    "SLV_T", "SLV_T_1", "SLV_T_2", "SLV_T_12", "SLV_T_13",
+    "PAN_T", "PAN_T_1", "PAN_T_2", "PAN_T_12", "PAN_T_13",
+  ]; // Lista de nombres de hojas a copiar
+  
+  var hojasCopiadas = [];
+  
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheets[i]);
+    var url = sheet.getRange("B1").getValue();
+    var hojaOrigen = sheet.getRange("D1").getValue();
+    
+    try {
+      if (url && url !== "") {
+        copiarDocumento(url, hojaOrigen, sheet);
+        hojasCopiadas.push(sheets[i]);
+      }
+    } catch (error) {
+      console.log("Error al copiar la hoja " + sheets[i] + ": " + error.message);
+    }
+  }
+  
+  if (hojasCopiadas.length > 0) {
+    var mensaje = "La copia de las hojas " + hojasCopiadas.join(", ") + " fue realizada con éxito.";
+    SpreadsheetApp.getActiveSpreadsheet().toast(mensaje, "Copia finalizada", 5);
+  }
+}
+
+function copiarDocumento(url, hojaOrigen, hojaDestino) {
+  var origen = hojaDestino.getRange("A3").getValue();
+
+  var documento = SpreadsheetApp.openByUrl(url);
+  var hojaNombre = hojaOrigen.split("!")[0];
+  var rango = hojaOrigen.split("!")[1];
+
+  var hojaACopiar = documento.getSheetByName(hojaNombre);
+
+  if (hojaACopiar) {
+    var rangoACopiar = hojaACopiar.getRange(rango);
+    var datosACopiar = rangoACopiar.getValues();
+
+    hojaDestino.getRange("A3").offset(0, 0, datosACopiar.length, datosACopiar[0].length).setValues(datosACopiar);
+  } else {
+    throw new Error("No se encontró la hoja " + hojaNombre + " en el documento especificado.");
+  }
+}
+
+function copiarDocumentos3() {
+  var sheets = [
+    "HND_Resumen", "CRI_Resumen", "SLV_Resumen", "PAN_Resumen"
+  ]; // Lista de nombres de hojas a copiar
+  
+  var hojasCopiadas = [];
+  
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheets[i]);
+    var url = sheet.getRange("B1").getValue();
+    var hojaOrigen = sheet.getRange("D1").getValue();
+    
+    try {
+      if (url && url !== "") {
+        copiarDocumento3(url, hojaOrigen, sheet);
+        hojasCopiadas.push(sheets[i]);
+      }
+    } catch (error) {
+      console.log("Error al copiar la hoja " + sheets[i] + ": " + error.message);
+    }
+  }
+  
+  if (hojasCopiadas.length > 0) {
+    var mensaje = "La copia de las hojas " + hojasCopiadas.join(", ") + " fue realizada con éxito.";
+    SpreadsheetApp.getActiveSpreadsheet().toast(mensaje, "Copia finalizada", 5);
+  }
+}
+
+function copiarDocumento3(url, hojaOrigen, hojaDestino) {
+  var origen = hojaDestino.getRange("A3").getValue();
+
+  var documento = SpreadsheetApp.openByUrl(url);
+  var hojaACopiar = documento.getSheetByName(hojaOrigen);
+
+  if (hojaACopiar) {
+    var datosACopiar = hojaACopiar.getDataRange().getValues();
+
+    hojaDestino.getRange("A3").offset(0, 0, datosACopiar.length, datosACopiar[0].length).setValues(datosACopiar);
+  } else {
+    throw new Error("No se encontró la hoja " + hojaOrigen + " en el documento especificado.");
+  }
+}
